@@ -10,4 +10,13 @@
         Win,
         Afraid
     }
+    public enum GameState
+    {
+        Playing,
+        Loading,
+        Reloading,
+        Winning,
+        Losing,
+        NextLevel
+    }
 }

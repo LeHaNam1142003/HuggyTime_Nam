@@ -2,20 +2,22 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Component;
+using Level;
 using UnityEngine;
 using Player;
 using nameTag;
 namespace Enemy
 {
-    public class Secretary_Enemy : MonoBehaviour
+    public class Secretary_Enemy : EnemyBase
     {
-        public EnemyController EnemyController;
+      
         private Rigidbody2D enemyrb;
         public State SecretaryState;
+        private BoxCollider2D boxcollider2D;
         void Start()
         {
             enemyrb = GetComponent<Rigidbody2D>();
-            EnemyController = GetComponent<EnemyController>();
+            boxcollider2D = GetComponent<BoxCollider2D>();
         }
         void Update()
         {
@@ -25,21 +27,22 @@ namespace Enemy
         }
         void Die()
         {
-            if (EnemyController.Isdead!=false&& EnemyController.Isafraid!=true)
+            if (Isdead!=false&& Isafraid!=true)
             {
                 SecretaryState = State.Die;
+                boxcollider2D.enabled = false;
             }
         }
         public void Afraid()
         {
-             if (EnemyController.Isafraid!=false&& EnemyController.Isdead!=true)
+             if (Isafraid!=false&& Isdead!=true)
              {
                  SecretaryState = State.Afraid;
              }
         }
         void UpdateEnemy()
         {
-            if (EnemyController.Issee!=false)
+            if (Issee!=false)
             {
                 GameObject findplayer=GameObject.FindGameObjectWithTag(NameTag.Player);
                 Flip(findplayer.transform.position.x);

@@ -6,6 +6,7 @@ using Component;
 using Spine.Unity;
 using DG.Tweening;
 using Enemy;
+using Level;
 using nameTag;
 using Stick;
 using UnityEngine;
@@ -15,6 +16,7 @@ namespace Player
     public class PlayerController : MonoBehaviour
     {
         public State PlayerState;
+        [SerializeField] private PlayerAnim PlayerAnim;
         [SerializeField] PlayerInfor PlayerInfor;
         public GameObject Target;
         private RaycastHit2D stickhitright;
@@ -28,58 +30,65 @@ namespace Player
         [SerializeField] private Transform EnemyPosiRaycastLeft;
         [SerializeField] private Transform StickPosiRaycastLeft;
         [SerializeField] private Transform PlayerGimouz;
+        [SerializeField] private Transform Findenemy;
         public bool PlayerCanmove;
         private int distanceraycast = 10;
         private Rigidbody2D playerrb;
-        private bool isleft;
-        private bool isright;
-        private bool finishattack;
         private bool collidetrap;
         private bool collideenemy;
         private GameObject[] findenemy;
         public bool isafraid { set; get; }
         public bool isdead { set; get; }
+
         private Transform stickposiraycastright
         {
-            get =>StickPosiRaycastRight ;
+            get => StickPosiRaycastRight;
             set => StickPosiRaycastRight = value;
         }
+
         private Transform stickposiraycastleft
         {
-            get =>StickPosiRaycastLeft ;
+            get => StickPosiRaycastLeft;
             set => StickPosiRaycastLeft = value;
         }
+
         private Transform playergimouz
         {
             get => PlayerGimouz;
             set => PlayerGimouz = value;
         }
+
         private Transform enemyposiraycastright
         {
             set => EnemyPosiRaycastRight = value;
             get => EnemyPosiRaycastRight;
         }
+
         private Transform enemyposieaycastLeft
         {
             set => EnemyPosiRaycastLeft = value;
             get => EnemyPosiRaycastLeft;
         }
+
         private int setdistanceraycast
         {
             set => distanceraycast = value;
             get => distanceraycast;
         }
+
         void Start()
         {
             Idle();
             BoolStart();
             playerrb = GetComponent<Rigidbody2D>();
+            PlayerAnim = GetComponent<PlayerAnim>();
         }
         // Update is called once per frame
         void Update()
         {
+            PlayerAnim.UpDateState(PlayerState);
             IgnorCollision();
-            if (PlayerCanmove!=false)
+            if (PlayerCanmove != false)
             {
                 DetectEnemy();
             }
@@ -87,16 +96,14 @@ namespace Player
         void BoolStart()
         {
             PlayerCanmove = true;
-            isleft = true;
-            isright = true;
-            finishattack = true;
-             collideenemy = false;
-             collidetrap = false;
+            collideenemy = false;
+            collidetrap = false;
         }
         void RaycastPLayer_Right()
         {
-            stickhitright = Physics2D.Raycast(stickposiraycastright.position, transform.right, setdistanceraycast, StickLayermask);
-            Debug.DrawRay(stickposiraycastright.position,transform.right*setdistanceraycast,Color.blue);
+            stickhitright = Physics2D.Raycast(stickposiraycastright.position, transform.right, setdistanceraycast,
+                StickLayermask);
+            Debug.DrawRay(stickposiraycastright.position, transform.right * setdistanceraycast, Color.blue);
             if (stickhitright)
             {
                 return;
@@ -108,8 +115,9 @@ namespace Player
         }
         void RaycastPLayer_Left()
         {
-            stickhitleft = Physics2D.Raycast(stickposiraycastleft.position, -transform.right, setdistanceraycast, StickLayermask);
-            Debug.DrawRay(stickposiraycastleft.position,-transform.right*setdistanceraycast,Color.blue);
+            stickhitleft = Physics2D.Raycast(stickposiraycastleft.position, -transform.right, setdistanceraycast,
+                StickLayermask);
+            Debug.DrawRay(stickposiraycastleft.position, -transform.right * setdistanceraycast, Color.blue);
             if (stickhitleft)
             {
                 return;
@@ -121,59 +129,68 @@ namespace Player
         }
         void Win()
         {
-            PlayerCanmove = false;
-            PlayerState = State.Win;
-            StartCoroutine(WaitCameraFollow());
-        }
-        IEnumerator WaitCameraFollow()
-        {
-            yield return new WaitForSeconds(GameManager.GameManager.Instance.Gettimetocamerafollow);
-            GameManager.GameManager.Instance.StartFollow();
+            if (PlayerState!= State.Die)
+            {
+                PlayerCanmove = false;
+                PlayerState = State.Win;
+            }
         }
         void Move() => PlayerState = State.Run;
         void StopMove()
         {
             DOTween.KillAll(false);
         }
+
         void Idle()
         {
             PlayerState = State.Idle;
-        } 
-        public void Die( bool isdead)
+        }
+        public void Die()
         {
-            if (isdead!=false)
+            if (PlayerState!= State.Win&& PlayerState!= State.Attack2)
             {
                 PlayerCanmove = false;
                 PlayerState = State.Die;
+                StartCoroutine(WaitForLost());
                 StopMove();
-                StartCoroutine(WaitCameraFollow());
             }
-        } 
+        }
+        IEnumerator WaitForLost()
+        {
+            yield return new WaitForSeconds(ConstAnimationPlayer.Die);
+            GameManager.GameManager.Instance.GameState = GameState.Losing;
+        }
         void FindEnemyRight()
         {
             enemyhitright = Physics2D.Raycast(enemyposiraycastright.position, transform.right, setdistanceraycast,
-                    EnemyLayerMask);
-                var setposi = enemyhitright.point.x > 0 ? true : false;
-                Debug.DrawRay(enemyposiraycastright.position, transform.right * setdistanceraycast, Color.blue);
-                if (enemyhitright&& isright)
-                {
-                    isleft = false;
-                    Flip(enemyhitright.point.x);
-                    if (setposi == true)
+                EnemyLayerMask);
+            var setposi = enemyhitright.point.x > 0 ? true : false;
+            Debug.DrawRay(enemyposiraycastright.position, transform.right * setdistanceraycast, Color.blue);
+            if (enemyhitright)
+            {
+                var findenemy = enemyhitright.transform;
+                Findenemy = findenemy;
+                Flip(enemyhitright.point.x);
+                
+                    if (Mathf.Abs((this.transform.position.x-Findenemy.position.x)) <= PlayerInfor.Range)
                     {
-                        transform.DOMoveX((enemyhitright.point.x - PlayerInfor.Mindistance), PlayerInfor.Speed)
-                            .OnStart((() => Move()));
+                        Debug.Log("right");
+                        Attack2();
                     }
                     else
                     {
-                        transform.DOMoveX((enemyhitright.point.x + PlayerInfor.Mindistance), PlayerInfor.Speed)
-                            .OnStart((() => Move()));
+                        if (setposi == true)
+                        {
+                            transform.DOMoveX((enemyhitright.point.x - PlayerInfor.Mindistance), PlayerInfor.Speed)
+                                .OnStart((() => Move())).OnComplete((() => Attack2()));
+                        }
+                        else
+                        {
+                            transform.DOMoveX((enemyhitright.point.x + PlayerInfor.Mindistance), PlayerInfor.Speed)
+                                .OnStart((() => Move())).OnComplete((() => Attack2()));
+                        }
                     }
-                }
-                else
-                {
-                    isleft = true;
-                }
+            }
         }
         void FindEnemyLeft()
         {
@@ -182,59 +199,57 @@ namespace Player
                 var setposi = enemyhitleft.point.x > 0 ? true : false;
                 Debug.DrawRay(enemyposieaycastLeft.position, -transform.right * setdistanceraycast, Color.blue);
                 {
-                    if (enemyhitleft && isleft)
+                    if (enemyhitleft)
                     {
-                        isright = false;
+                        var findenemy = enemyhitleft.transform;
+                        Findenemy = findenemy;
                         Flip(enemyhitleft.point.x);
-                        if (setposi == true)
+                        if (Mathf.Abs((this.transform.position.x-Findenemy.position.x)) <= PlayerInfor.Range)
                         {
-                            transform.DOMoveX((enemyhitleft.point.x - PlayerInfor.Mindistance), PlayerInfor.Speed)
-                                .OnStart((() => Move()));
-                            ;
+                            Debug.Log("left");
+                            Attack2();
                         }
                         else
                         {
-                            transform.DOMoveX((enemyhitleft.point.x + PlayerInfor.Mindistance), PlayerInfor.Speed)
-                                .OnStart((() => Move()));
-                            ;
+                            if (setposi == true)
+                                {
+                                    transform.DOMoveX((enemyhitleft.point.x - PlayerInfor.Mindistance), PlayerInfor.Speed)
+                                        .OnStart((() => Move())).OnComplete((() => Attack2()));
+                                    ;
+                                }
+                                else
+                                {
+                                    transform.DOMoveX((enemyhitleft.point.x + PlayerInfor.Mindistance), PlayerInfor.Speed)
+                                        .OnStart((() => Move())).OnComplete((() => Attack2()));
+                                    ;
+                                }
                         }
-                    }
-                    else
-                    {
-                        isright = true;
                     }
                 }
         }
         private void OnDrawGizmos()=> Gizmos.DrawWireSphere(playergimouz.position,PlayerInfor.Range);
         void DetectEnemy()
         {
-            findenemy = GameObject.FindGameObjectsWithTag(NameTag.Enemy);
-            foreach (GameObject getobj in findenemy)
+            if (PlayerAnim.IsFind!=false)
+                     { 
+                         Findenemy = null;
+            }
+            if (Findenemy==null)
             {
-                if (Vector3.Distance(this.transform.position,getobj.transform.position)<=PlayerInfor.Range+PlayerInfor.Extra&& Vector3.Distance(this.transform.position,getobj.transform.position)>=PlayerInfor.Range)
+                PlayerState = State.Idle;
+                PlayerAnim.IsFind = false;
+                RaycastPLayer_Left();
+                RaycastPLayer_Right();
+            }
+            else
+            {
+                if (Vector3.Distance(this.transform.position,Findenemy.position)<=PlayerInfor.Range+PlayerInfor.Extra&& Vector3.Distance(this.transform.position,Findenemy.position)>=PlayerInfor.Range)
                 {
-                    EnemyController enemyController = getobj.GetComponent<EnemyController>();
+                    EnemyBase enemyController = Findenemy.GetComponent<EnemyBase>();
                     enemyController.EnemyAfraid();
                     enemyController.See();
                 }
-                if (Vector3.Distance(this.transform.position,getobj.transform.position)<=PlayerInfor.Range)
-                {
-                    Target = getobj;
-                    Flip(getobj.transform.position.x);
-                    Attack2();
-                    StopMove();
-                }
-                else
-                {
-                    RaycastPLayer_Left();
-                    RaycastPLayer_Right();
-                }
             }
-        }
-        public void KillEnemy( GameObject getenemy)
-        {
-            EnemyController enemyController = getenemy.GetComponent<EnemyController>();
-            enemyController.EnemyDie();
         }
         void IgnorCollision()
         {
@@ -260,44 +275,43 @@ namespace Player
         }
         private void Attack2()
         {
-            if (finishattack!=false)
-            {
-                PlayerState = State.Attack2;
-                StartCoroutine(WaitForWin());
-            }
-            else
+            PlayerState = State.Attack2;
+            PlayerAnim.Gettarget = Findenemy;
+            StartCoroutine(WaitUpDateEnemy());
+        }
+
+        IEnumerator WaitUpDateEnemy()
+        {
+            yield return new WaitForSeconds(ConstAnimationPlayer.Attack2);
+            LevelManager.Instance.UpDateTarget();
+            if (LevelManager.Instance.CurrentTarget<=0)
             {
                 Win();
             }
         }
-        IEnumerator WaitForWin()
-        {
-            yield return new WaitForSeconds(ConstAnimationPlayer.Attack2);
-            finishattack = false;
-        }
         private void Flip( float enemy)
         {
-            var setflip = this.transform.eulerAngles.y ==180 ?true :false;
+            var setflip = this.transform.localScale.x >0 ?true :false;
             if (setflip!=false)
             {
                 if (this.transform.position.x>enemy)
                 {
-                   return;
+                    this.transform.localScale = new Vector3(this.transform.localScale.x * -1, 1, 1);
                 }
                 else
                 {
-                    this.transform.eulerAngles = new Vector3(this.transform.eulerAngles.x , this.transform.eulerAngles.y-180, this.transform.eulerAngles.z);
+                    return;
                 }
             }
             else if (setflip!=true)
             {
                 if (this.transform.position.x<enemy)
                 {
-                   return;
+                    this.transform.localScale = new Vector3(this.transform.localScale.x * -1, 1, 1);
                 }
                 else
                 {
-                    this.transform.eulerAngles = new Vector3(this.transform.eulerAngles.x , this.transform.eulerAngles.y+180, this.transform.eulerAngles.z);
+                    return;
                 }
             }
         }

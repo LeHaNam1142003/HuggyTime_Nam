@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using Component;
+using Enemy;
+using Level;
 using Player;
 using Spine;
 using Spine.Unity;
@@ -11,9 +13,12 @@ public class PlayerAnim : MonoBehaviour
 {
     public List<StateAnimation> StateAnimations;
     public SkeletonAnimation SkeletonAnimation;
-    public PlayerController PlayerController;
     private State previousstate;
+    public State Currentstate;
     private string animationname;
+    public bool Iskill;
+    public bool IsFind;
+    public Transform Gettarget;
     [System.Serializable]
     public class StateAnimation
     {
@@ -26,16 +31,15 @@ public class PlayerAnim : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        var currentstate = PlayerController.PlayerState;
-        if (previousstate!= currentstate)
+        if (previousstate!= Currentstate)
         {
             PlayAnim();
         }
-        previousstate = currentstate;
+        previousstate = Currentstate;
     }
     public void PlayAnim()
     {
-        var getstate = PlayerController.PlayerState;
+        var getstate = Currentstate;
         switch (getstate)
         {
             case State.Die:
@@ -71,8 +75,8 @@ public class PlayerAnim : MonoBehaviour
                     {
                         if (animationname==StateAnimPlayer.Attack2)
                         {
-                            SkeletonAnimation.AnimationState.SetAnimation(0, StateAnimations[i].Animation, false);
                             SkeletonAnimation.AnimationState.Event+= AttackEvent;
+                            SkeletonAnimation.AnimationState.SetAnimation(0, StateAnimations[i].Animation, false);
                         }
                         else
                         {
@@ -87,7 +91,16 @@ public class PlayerAnim : MonoBehaviour
     { 
         if (e.Data==SkeletonAnimation.Skeleton.Data.FindEvent(PlayerEvent.OnBullet))
         {
-            PlayerController.KillEnemy(PlayerController.Target);
+            EnemyBase enemyBase = Gettarget.GetComponent<EnemyBase>();
+            enemyBase.EnemyDie();
         }
+        if (e.Data==SkeletonAnimation.Skeleton.Data.FindEvent(PlayerEvent.EndAttack))
+        {
+            IsFind = true;
+        }
+    }
+    public void UpDateState( State Getstate)
+    {
+        Currentstate = Getstate;
     }
     }
